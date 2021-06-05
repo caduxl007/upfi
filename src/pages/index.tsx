@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { useInfiniteQuery } from 'react-query';
 
 import { Header } from '../components/Header';
-import { CardList } from '../components/CardList';
+import { Card, CardList } from '../components/CardList';
 import { api } from '../services/api';
 import { Loading } from '../components/Loading';
 import { Error } from '../components/Error';
@@ -18,18 +18,39 @@ export default function Home(): JSX.Element {
     hasNextPage,
   } = useInfiniteQuery(
     'images',
-    // TODO AXIOS REQUEST WITH PARAM
-    ,
-    // TODO GET AND RETURN NEXT PAGE PARAM
+    async ({ pageParam = null }) => {
+      const response = await api.get('/api/images', {
+        params: {
+          after: pageParam,
+        },
+      });
+
+      return response.data;
+    },
+    {
+      getNextPageParam: after => after || null,
+    }
   );
 
   const formattedData = useMemo(() => {
-    // TODO FORMAT AND FLAT DATA ARRAY
+    return data?.pages.flat().map((dataMap: Card) => {
+      return {
+        id: dataMap.id,
+        title: dataMap.title,
+        description: dataMap.description,
+        url: dataMap.url,
+        ts: dataMap.ts,
+      };
+    });
   }, [data]);
 
-  // TODO RENDER LOADING SCREEN
+  if (isLoading) {
+    return <Loading />;
+  }
 
-  // TODO RENDER ERROR SCREEN
+  if (isError) {
+    return <Error />;
+  }
 
   return (
     <>
