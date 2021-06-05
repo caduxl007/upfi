@@ -8,6 +8,10 @@ import { api } from '../services/api';
 import { Loading } from '../components/Loading';
 import { Error } from '../components/Error';
 
+type CardData = {
+  data: Card[];
+};
+
 export default function Home(): JSX.Element {
   const {
     data,
@@ -28,20 +32,19 @@ export default function Home(): JSX.Element {
       return response.data;
     },
     {
-      getNextPageParam: after => after || null,
+      getNextPageParam: lastPage => lastPage.after || null,
     }
   );
 
+  async function loadImages(): Promise<void> {
+    await fetchNextPage();
+  }
+
   const formattedData = useMemo(() => {
-    return data?.pages.flat().map((dataMap: Card) => {
-      return {
-        id: dataMap.id,
-        title: dataMap.title,
-        description: dataMap.description,
-        url: dataMap.url,
-        ts: dataMap.ts,
-      };
-    });
+    return data?.pages
+      .flat()
+      .map((cards: CardData) => cards.data)
+      .flat();
   }, [data]);
 
   if (isLoading) {
@@ -58,7 +61,11 @@ export default function Home(): JSX.Element {
 
       <Box maxW={1120} px={20} mx="auto" my={20}>
         <CardList cards={formattedData} />
-        {/* TODO RENDER LOAD MORE BUTTON IF DATA HAS NEXT PAGE */}
+        {hasNextPage && (
+          <Button mt="8" isLoading={isFetchingNextPage} onClick={loadImages}>
+            Carregar mais
+          </Button>
+        )}
       </Box>
     </>
   );

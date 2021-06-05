@@ -22,9 +22,19 @@ export function FormAddImage({ closeModal }: FormAddImageProps): JSX.Element {
   const [localImageUrl, setLocalImageUrl] = useState('');
   const toast = useToast();
 
+  const regexInputImageAcceptedFormats =
+    /(?:([^:/?#]+):)?(?:([^/?#]*))?([^?#](?:jpeg|gif|png))(?:\?([^#]*))?(?:#(.*))?/g;
+
   const formValidations = {
     image: {
       required: 'Arquivo obrigatório',
+      validate: {
+        lessThan10MB: fileList =>
+          fileList[0].size < 10000000 || 'O arquivo deve ser menor que 10MB',
+        acceptedFormats: fileList =>
+          regexInputImageAcceptedFormats.test(fileList[0].type) ||
+          'Somente são aceitos arquivos PNG, JPEG e GIF',
+      },
     },
     title: {
       required: 'Título obrigatorio',
@@ -51,7 +61,7 @@ export function FormAddImage({ closeModal }: FormAddImageProps): JSX.Element {
     async (data: FormDataCreate) => {
       const newData = {
         ...data,
-        url: data.image,
+        url: imageUrl,
       };
       const response = await api.post('api/images', newData);
 
@@ -68,30 +78,40 @@ export function FormAddImage({ closeModal }: FormAddImageProps): JSX.Element {
     useForm();
   const { errors } = formState;
 
-  const onSubmit = async (data): Promise<void> => {
+  const onSubmit = async (data: FormDataCreate): Promise<void> => {
     try {
-      const newData = new FormData();
+      if (!imageUrl) {
+        toast({
+          title: 'Imagem não adicionada',
+          description:
+            'É preciso adicionar e aguardar o upload de uma imagem antes de realizar o cadastro.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
 
-      console.log(data.image[0]);
-      // console.log(imageUrl);
+      await mutation.mutateAsync(data);
 
-      newData.append('attachment', data.image);
-
-      const responseImage = await api.post(
-        `https://api.imgbb.com/1/upload?expiration=600&key=${process.env.NEXT_PUBLIC_IMGBB_API_KEY}`,
-        newData
-      );
-
-      // const json = await responseImage.json();
-
-      console.log(responseImage);
-      // TODO SHOW ERROR TOAST IF IMAGE URL DOES NOT EXISTS
-      // TODO EXECUTE ASYNC MUTATION
-      // TODO SHOW SUCCESS TOAST
+      toast({
+        title: 'Imagem cadastrada',
+        description: 'Sua imagem foi cadastrada com sucesso.',
+        status: 'success',
+      });
     } catch {
-      // TODO SHOW ERROR TOAST IF SUBMIT FAILED
+      toast({
+        title: 'Falha no cadastro',
+        description: 'Ocorreu um erro ao tentar cadastrar a sua imagem.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     } finally {
-      // TODO CLEAN FORM, STATES AND CLOSE MODAL
+      reset();
+      setLocalImageUrl('');
+      setImageUrl('');
+      closeModal();
     }
   };
 
@@ -105,11 +125,8 @@ export function FormAddImage({ closeModal }: FormAddImageProps): JSX.Element {
           setLocalImageUrl={setLocalImageUrl}
           setError={setError}
           trigger={trigger}
-          onChange={e => setImageUrl(e.target.value)}
           {...register('image', formValidations.image)}
           error={errors.image}
-          // TODO SEND IMAGE ERRORS
-          // TODO REGISTER IMAGE INPUT WITH VALIDATIONS
         />
 
         <TextInput
